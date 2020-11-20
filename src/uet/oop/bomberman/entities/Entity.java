@@ -1,37 +1,34 @@
 package uet.oop.bomberman.entities;
 
-import javafx.scene.SnapshotParameters;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.paint.Color;
 import uet.oop.bomberman.graphics.Sprite;
 
-public abstract class Entity {
-    protected int x;
-    protected int y;
-    protected Image img;
-    public boolean changed;
-    public int layer;
+import java.awt.*;
 
-    public Entity(int x, int y, Image img) {
-        this.x = x;
-        this.y = y;
+public abstract class Entity {
+    //Tọa độ X tính từ góc trái trên trong Canvas
+    protected int x;
+
+    //Tọa độ Y tính từ góc trái trên trong Canvas
+    protected int y;
+
+    protected Image img;
+
+    protected int layer;
+
+    //Khởi tạo đối tượng, chuyển từ tọa độ đơn vị sang tọa độ trong canvas
+    public Entity( int xUnit, int yUnit, Image img) {
+        this.x = xUnit * Sprite.SCALED_SIZE;
+        this.y = yUnit * Sprite.SCALED_SIZE;
         this.img = img;
-        changed = true;
     }
 
     public void render(GraphicsContext gc) {
-        if (!changed) return;
-        SnapshotParameters params = new SnapshotParameters();
-        params.setFill(Color.TRANSPARENT);
-
-        ImageView iv = new ImageView(img);
-        Image base = iv.snapshot(params, null);
-
-        gc.drawImage(base, x * Sprite.SCALED_SIZE, y * Sprite.SCALED_SIZE);
-        changed = false;
+        gc.drawImage(img, x, y);
     }
+
+    public abstract void update();
 
     public int getX() {
         return x;
@@ -41,5 +38,15 @@ public abstract class Entity {
         return y;
     }
 
-    public abstract void update();
+    public int getLayer() {
+        return layer;
+    }
+
+    public void setLayer(int layer) {
+        this.layer = layer;
+    }
+
+    public Rectangle getBounds() {
+        return new Rectangle(x, y, Sprite.SCALED_SIZE, Sprite.SCALED_SIZE);
+    }
 }

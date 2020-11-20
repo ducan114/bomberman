@@ -1,73 +1,59 @@
 package uet.oop.bomberman.entities;
 
-import javafx.scene.SnapshotParameters;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.paint.Color;
-import uet.oop.bomberman.BombermanGame;
 import uet.oop.bomberman.graphics.Sprite;
 
-public abstract class MovingEntity extends Entity {
-    protected int previousX;
-    protected int previousY;
-    protected boolean alive = true;
+import java.awt.*;
 
-    public MovingEntity(int x, int y, Image img) {
-        super(x, y, img);
-        previousX = x;
-        previousY = y;
+public abstract class MovingEntity extends Entity {
+    protected int desX = x;
+    protected int desY = y;
+    protected int speed;
+    protected boolean alive;
+    protected int left = 0;
+    protected int right = 0;
+    protected int up = 0;
+    protected int down = 0;
+
+    public MovingEntity(int xUnit, int yUnit, Image img) {
+        super(xUnit, yUnit, img);
+        alive = true;
     }
+
+    public void setSpeed(int speed) {
+        this.speed = speed;
+    }
+
     public void goLeft() {
-        previousX = x;
-        previousY = y;
-        x--;
-        handleCollision();
+        desX = x - speed;
     }
 
     public void goRight() {
-        previousX = x;
-        previousY = y;
-        x++;
-        handleCollision();
+        desX = x + speed;
     }
-
     public void goUp() {
-        previousX = x;
-        previousY = y;
-        y--;
-        handleCollision();
+        desY = y - speed;
     }
 
     public void goDown() {
-        previousX = x;
-        previousY = y;
-        y++;
-        handleCollision();
+        desY = y + speed;
     }
 
-    public void render(GraphicsContext gc) {
-        if (!changed) return;
-        SnapshotParameters params = new SnapshotParameters();
-        params.setFill(Color.TRANSPARENT);
-
-        ImageView iv = new ImageView(img);
-        Image base = iv.snapshot(params, null);
-
-        gc.drawImage(base, x * Sprite.SCALED_SIZE, y * Sprite.SCALED_SIZE);
-        changed = false;
+    public void move() {
+        x = desX;
+        y = desY;
     }
-    public void handleCollision() {
-        BombermanGame.stillObjects.forEach(g -> {
-            if (g.getX() == previousX && g.getY() == previousY) {
-                g.update();
-            }
-            if (g.getX() == x && g.getY() == y) {
-                if (g.layer > layer) {
-                    x = previousX;
-                    y = previousY;
-                }
-            }
-        });
+
+    public void stay() {
+        desX = x;
+        desY = y;
+    }
+
+    public Rectangle getBounds() {
+        return new Rectangle(desX, desY, Sprite.SCALED_SIZE, Sprite.SCALED_SIZE);
+    }
+
+    public boolean isAlive() {
+        return alive;
     }
 }

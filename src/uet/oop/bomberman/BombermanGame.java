@@ -9,36 +9,36 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.stage.Stage;
 import uet.oop.bomberman.entities.*;
 import uet.oop.bomberman.graphics.Sprite;
+
+import java.awt.*;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Scanner;
 
 public class BombermanGame extends Application {
     
-    public static int WIDTH;
-    public static int HEIGHT;
+    public static int WIDTH = 20;
+    public static int HEIGHT = 15;
+    public static int level = 1;
     
     private GraphicsContext gc;
     private Canvas canvas;
-    public static List<Entity> entities = new ArrayList<>();
-    public static List<Entity> stillObjects = new ArrayList<>();
-
     private Scanner scanner;
+
+    private final List<Enemy> enemies = new ArrayList<>();
+    private final List<Entity> stillObjects = new ArrayList<>();
+    private Bomber myBomber;
 
     public static void main(String[] args) {
         Application.launch(BombermanGame.class);
     }
 
     @Override
-    public void start(Stage stage) throws IOException {
-
-        FileReader level = new FileReader("res/levels/Level1.txt");
-        scanner = new Scanner(level);
-        int lvl = scanner.nextInt();
-        HEIGHT = scanner.nextInt();
-        WIDTH = scanner.nextInt();
+    public void start(Stage stage) {
+        load();
         // Tao Canvas
         canvas = new Canvas(Sprite.SCALED_SIZE * WIDTH, Sprite.SCALED_SIZE * HEIGHT);
         gc = canvas.getGraphicsContext2D();
@@ -53,79 +53,159 @@ public class BombermanGame extends Application {
         // Them scene vao stage
         stage.setScene(scene);
         stage.show();
+
         AnimationTimer timer = new AnimationTimer() {
-            private long lastCall = 0;
             @Override
             public void handle(long l) {
-                if (l - lastCall >= 2e8) {
-                    update();
-                    render();
-                    lastCall = l;
-                }
+                render();
+                update();
             }
         };
         timer.start();
 
-        createMap();
+        myBomber = new Bomber(11, 1, Sprite.player_right.getFxImage());
 
-        Bomber bomberman = new Bomber(1, 1, Sprite.player_right.getFxImage());
-        entities.add(bomberman);
-        scene.setOnKeyPressed(event -> {
-            bomberman.keyCode = event.getCode();
-        });
-    }
-
-    public void createMap() {
-        scanner.nextLine();
-        for (int i = 0; i < HEIGHT; i++) {
-            String r = scanner.nextLine();
-            for (int j = 0; j < WIDTH; j++) {
-                Entity object;
-                if (r.charAt(j) == '#') {
-                    object = new Wall(j, i, Sprite.wall.getFxImage());
-                } else {
-                    object = new Grass(j, i, Sprite.grass.getFxImage());
-                    stillObjects.add(object);
-                    if (r.charAt(j) == '*') {
-                        object = new Brick(j, i, Sprite.brick.getFxImage());
-                    } else if (r.charAt(j) == 'x') {
-                        object = new Portal(j, i, Sprite.portal.getFxImage());
-                        stillObjects.add(object);
-                        object = new Brick(j, i, Sprite.brick.getFxImage());
-                    } else if (r.charAt(j) == '1') {
-                        object = new Balloon(j, i, Sprite.balloom_left1.getFxImage());
-                        entities.add(object);
-                        continue;
-                    } else if (r.charAt(j) == '2') {
-                        object = new Oneal(j, i, Sprite.oneal_left1.getFxImage());
-                        entities.add(object);
-                        continue;
-                    } else if (r.charAt(j) == 'b') {
-                        object = new BombItem(j, i, Sprite.powerup_bombs.getFxImage());
-                        stillObjects.add(object);
-                        object = new Brick(j, i, Sprite.brick.getFxImage());
-                    } else if (r.charAt(j) == 'f') {
-                        object = new FlameItem(j, i, Sprite.powerup_flames.getFxImage());
-                        stillObjects.add(object);
-                        object = new Brick(j, i, Sprite.brick.getFxImage());
-                    } else if (r.charAt(j) == 's') {
-                        object = new SpeedItem(j, i, Sprite.powerup_speed.getFxImage());
-                        stillObjects.add(object);
-                        object = new Brick(j, i, Sprite.brick.getFxImage());
-                    }
-                }
-                stillObjects.add(object);
-            }
-        }
+        scene.setOnKeyPressed(event -> myBomber.handleKeyPressedEvent(event.getCode()));
+        scene.setOnKeyReleased(event -> myBomber.handleKeyReleasedEvent(event.getCode()));
     }
 
     public void update() {
-        entities.forEach(Entity::update);
+        enemies.forEach(Entity::update);
+        myBomber.update();
+        List<Bomb> bombs = myBomber.getBombs();
+        for(Bomb bomb : bombs) {
+            bomb.update();
+        }
+        handleCollisions();
     }
 
     public void render() {
-        //gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-        stillObjects.forEach(g -> g.render(gc));
-        entities.forEach(g -> g.render(gc));
+        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        for (int i = stillObjects.size() - 1; i >= 0; i--) {
+            stillObjects.get(i).render(gc);
+        }
+        enemies.forEach(g -> g.render(gc));
+        List<Bomb> bombs = myBomber.getBombs();
+        for(Bomb bomb : bombs) {
+            bomb.render(gc);
+        }
+        myBomber.render(gc);
+    }
+
+    public void load() {
+        try {
+            scanner = new Scanner(new FileReader("res/levels/level" + level + ".txt"));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        scanner.nextInt();
+        HEIGHT = scanner.nextInt();
+        WIDTH = scanner.nextInt();
+        scanner.nextLine();
+        createMap();
+    }
+
+    public void createMap() {
+        for (int i = 0; i < HEIGHT; i++) {
+            String r = scanner.nextLine();
+            for (int j = 0; j < WIDTH; j++) {
+                if (r.charAt(j) == '#') {
+                    stillObjects.add(new Wall(j, i, Sprite.wall.getFxImage()));
+                } else {
+                    stillObjects.add(new Grass(j, i, Sprite.grass.getFxImage()));
+                    if (r.charAt(j) == '*') {
+                        stillObjects.add(new Brick(j, i, Sprite.brick.getFxImage()));
+                    }
+                    if (r.charAt(j) == 'x') {
+                        stillObjects.add(new Portal(j, i, Sprite.portal.getFxImage()));
+                        stillObjects.add(new Brick(j, i, Sprite.brick.getFxImage()));
+                    }
+                    if (r.charAt(j) == '1') {
+                        enemies.add(new Balloon(j, i, Sprite.balloom_left1.getFxImage()));
+                    }
+                    if (r.charAt(j) == '2') {
+                        enemies.add(new Oneal(j, i, Sprite.oneal_left1.getFxImage()));
+                    }
+                    if (r.charAt(j) == 'b') {
+                        stillObjects.add(new BombItem(j, i, Sprite.powerup_bombs.getFxImage()));
+                        stillObjects.add(new Brick(j, i, Sprite.brick.getFxImage()));
+                    }
+                    if (r.charAt(j) == 'f') {
+                        stillObjects.add(new FlameItem(j, i, Sprite.powerup_flames.getFxImage()));
+                        stillObjects.add(new Brick(j, i, Sprite.brick.getFxImage()));
+                    }
+                    if (r.charAt(j) == 's') {
+                        stillObjects.add(new SpeedItem(j, i, Sprite.powerup_speed.getFxImage()));
+                        stillObjects.add(new Brick(j, i, Sprite.brick.getFxImage()));
+                    }
+                }
+            }
+        }
+        stillObjects.sort(new DescendingLayer());
+    }
+
+    public void handleCollisions() {
+        List<Bomb> bombs = myBomber.getBombs();
+        Rectangle r1 = myBomber.getBounds();
+        //Bomber vs Bombs
+        for (Bomb bomb : bombs) {
+            Rectangle r2 = bomb.getBounds();
+            if (!bomb.isAllowedToPassThrough(myBomber) && r1.intersects(r2)) {
+                myBomber.stay();
+                break;
+            }
+        }
+        //Bomber vs StillObjects
+        for (Entity stillObject : stillObjects) {
+            Rectangle r2 = stillObject.getBounds();
+            if (r1.intersects(r2)) {
+                if (myBomber.getLayer() >= stillObject.getLayer()) {
+                    myBomber.move();
+                } else {
+                    myBomber.stay();
+                }
+                break;
+            }
+        }
+        //Bomber vs Enemies
+        for (Enemy enemy : enemies) {
+            Rectangle r2 = enemy.getBounds();
+            if (r1.intersects(r2)) {
+                myBomber.die();
+            }
+        }
+        //Enemies vs Bombs
+        for (Enemy enemy : enemies) {
+            Rectangle r2 = enemy.getBounds();
+            for (Bomb bomb : bombs) {
+                Rectangle r3 = bomb.getBounds();
+                if (!bomb.isAllowedToPassThrough(enemy) && r2.intersects(r3)) {
+                    enemy.stay();
+                    break;
+                }
+            }
+        }
+        //Enemies vs StillObjects
+        for (Enemy enemy : enemies) {
+            Rectangle r2 = enemy.getBounds();
+            for (Entity stillObject : stillObjects) {
+                Rectangle r3 = stillObject.getBounds();
+                if (r2.intersects(r3)) {
+                    if (enemy.getLayer() >= stillObject.getLayer()) {
+                        enemy.move();
+                    } else {
+                        enemy.stay();
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+
+class DescendingLayer implements Comparator<Entity> {
+    @Override
+    public int compare(Entity o1, Entity o2) {
+        return Integer.compare(o2.getLayer(), o1.getLayer());
     }
 }

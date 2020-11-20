@@ -2,11 +2,9 @@ package uet.oop.bomberman.entities;
 
 import javafx.scene.image.Image;
 
-public class BombItem extends Entity {
-
-    public BombItem(int x, int y, Image img) {
-        super(x, y, img);
-        layer = 1;
+public class BombItem extends Item {
+    public BombItem(int xUnit, int yUnit, Image img) {
+        super(xUnit, yUnit, img);
     }
 
     @Override

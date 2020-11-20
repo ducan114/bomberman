@@ -6,7 +6,7 @@ public class Wall extends Entity {
 
     public Wall(int x, int y, Image img) {
         super(x, y, img);
-        layer = 2;
+        setLayer(4);
     }
 
     @Override
