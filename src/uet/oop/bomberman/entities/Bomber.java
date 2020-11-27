@@ -22,7 +22,7 @@ public class Bomber extends MovingEntity {
         setLayer(1);
         setSpeed(2);
         setBombRemain(2);
-        setPower(1);
+        setPower(2);
     }
 
     @Override
@@ -44,8 +44,8 @@ public class Bomber extends MovingEntity {
         }
         for (int i = 0; i < bombs.size(); i++) {
             Bomb bomb = bombs.get(i);
-            if (!bomb.isAlive()) {
-                bombs.remove(bomb);
+            if (bomb.isExploded()) {
+                bombs.remove(i--);
                 bombRemain++;
             }
         }
@@ -104,12 +104,14 @@ public class Bomber extends MovingEntity {
     
     public void placeBomb() {
         if (bombRemain > 0) {
-            int xB = (int) Math.round((x + 4) / (double) Sprite.SCALED_SIZE);
+            int xB = (int) Math.round((x) / (double) Sprite.SCALED_SIZE);
             int yB = (int) Math.round((y + 4) / (double) Sprite.SCALED_SIZE);
             for (Bomb bomb : bombs) {
                 if (xB * Sprite.SCALED_SIZE == bomb.getX() && yB * Sprite.SCALED_SIZE == bomb.getY()) return;
             }
-            bombs.add(new Bomb(xB, yB, Sprite.bomb.getFxImage()));
+            Bomb bomb = new Bomb(xB, yB, Sprite.bomb.getFxImage());
+            bomb.setPower(power);
+            bombs.add(bomb);
             bombRemain--;
         }
     }
@@ -141,7 +143,11 @@ public class Bomber extends MovingEntity {
         this.power = power;
     }
 
+    public Rectangle getDesBounds() {
+        return new Rectangle(desX, desY + 8, Sprite.SCALED_SIZE * 3 / 4, Sprite.SCALED_SIZE * 3 / 4);
+    }
+
     public Rectangle getBounds() {
-        return new Rectangle(desX + 4, desY + 4, Sprite.SCALED_SIZE * 3 / 4, Sprite.SCALED_SIZE * 3 / 4);
+        return new Rectangle(x, y + 8, Sprite.SCALED_SIZE * 3 / 4, Sprite.SCALED_SIZE * 3 / 4);
     }
 }

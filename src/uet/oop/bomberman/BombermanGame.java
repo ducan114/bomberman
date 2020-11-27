@@ -29,7 +29,7 @@ public class BombermanGame extends Application {
     private Scanner scanner;
 
     private final List<Enemy> enemies = new ArrayList<>();
-    private final List<Entity> stillObjects = new ArrayList<>();
+    private final List<StillEntity> stillObjects = new ArrayList<>();
     private Bomber myBomber;
 
     public static void main(String[] args) {
@@ -63,8 +63,6 @@ public class BombermanGame extends Application {
         };
         timer.start();
 
-        myBomber = new Bomber(11, 1, Sprite.player_right.getFxImage());
-
         scene.setOnKeyPressed(event -> myBomber.handleKeyPressedEvent(event.getCode()));
         scene.setOnKeyReleased(event -> myBomber.handleKeyReleasedEvent(event.getCode()));
     }
@@ -75,6 +73,7 @@ public class BombermanGame extends Application {
         List<Bomb> bombs = myBomber.getBombs();
         for(Bomb bomb : bombs) {
             bomb.update();
+            if (!bomb.isAlive() && !bomb.isExploded() && bomb.getFlames().size() == 0) bomb.addFlame(stillObjects);
         }
         handleCollisions();
     }
@@ -87,7 +86,13 @@ public class BombermanGame extends Application {
         enemies.forEach(g -> g.render(gc));
         List<Bomb> bombs = myBomber.getBombs();
         for(Bomb bomb : bombs) {
-            bomb.render(gc);
+            if (bomb.isAlive()) bomb.render(gc);
+            else {
+                List<Flame> flames = bomb.getFlames();
+                for (Flame flame : flames) {
+                    flame.render(gc);
+                }
+            }
         }
         myBomber.render(gc);
     }
@@ -106,37 +111,40 @@ public class BombermanGame extends Application {
     }
 
     public void createMap() {
-        for (int i = 0; i < HEIGHT; i++) {
+        for (int y = 0; y < HEIGHT; y++) {
             String r = scanner.nextLine();
-            for (int j = 0; j < WIDTH; j++) {
-                if (r.charAt(j) == '#') {
-                    stillObjects.add(new Wall(j, i, Sprite.wall.getFxImage()));
+            for (int x = 0; x < WIDTH; x++) {
+                if (r.charAt(x) == '#') {
+                    stillObjects.add(new Wall(x, y, Sprite.wall.getFxImage()));
                 } else {
-                    stillObjects.add(new Grass(j, i, Sprite.grass.getFxImage()));
-                    if (r.charAt(j) == '*') {
-                        stillObjects.add(new Brick(j, i, Sprite.brick.getFxImage()));
+                    stillObjects.add(new Grass(x, y, Sprite.grass.getFxImage()));
+                    if (r.charAt(x) == '*') {
+                        stillObjects.add(new Brick(x, y, Sprite.brick.getFxImage()));
                     }
-                    if (r.charAt(j) == 'x') {
-                        stillObjects.add(new Portal(j, i, Sprite.portal.getFxImage()));
-                        stillObjects.add(new Brick(j, i, Sprite.brick.getFxImage()));
+                    if (r.charAt(x) == 'x') {
+                        stillObjects.add(new Portal(x, y, Sprite.portal.getFxImage()));
+                        stillObjects.add(new Brick(x, y, Sprite.brick.getFxImage()));
                     }
-                    if (r.charAt(j) == '1') {
-                        enemies.add(new Balloon(j, i, Sprite.balloom_left1.getFxImage()));
+                    if (r.charAt(x) == 'p') {
+                        myBomber = new Bomber(x, y, Sprite.player_right.getFxImage());
                     }
-                    if (r.charAt(j) == '2') {
-                        enemies.add(new Oneal(j, i, Sprite.oneal_left1.getFxImage()));
+                    if (r.charAt(x) == '1') {
+                        enemies.add(new Balloon(x, y, Sprite.balloom_left1.getFxImage()));
                     }
-                    if (r.charAt(j) == 'b') {
-                        stillObjects.add(new BombItem(j, i, Sprite.powerup_bombs.getFxImage()));
-                        stillObjects.add(new Brick(j, i, Sprite.brick.getFxImage()));
+                    if (r.charAt(x) == '2') {
+                        enemies.add(new Oneal(x, y, Sprite.oneal_left1.getFxImage()));
                     }
-                    if (r.charAt(j) == 'f') {
-                        stillObjects.add(new FlameItem(j, i, Sprite.powerup_flames.getFxImage()));
-                        stillObjects.add(new Brick(j, i, Sprite.brick.getFxImage()));
+                    if (r.charAt(x) == 'b') {
+                        stillObjects.add(new BombItem(x, y, Sprite.powerup_bombs.getFxImage()));
+                        stillObjects.add(new Brick(x, y, Sprite.brick.getFxImage()));
                     }
-                    if (r.charAt(j) == 's') {
-                        stillObjects.add(new SpeedItem(j, i, Sprite.powerup_speed.getFxImage()));
-                        stillObjects.add(new Brick(j, i, Sprite.brick.getFxImage()));
+                    if (r.charAt(x) == 'f') {
+                        stillObjects.add(new FlameItem(x, y, Sprite.powerup_flames.getFxImage()));
+                        stillObjects.add(new Brick(x, y, Sprite.brick.getFxImage()));
+                    }
+                    if (r.charAt(x) == 's') {
+                        stillObjects.add(new SpeedItem(x, y, Sprite.powerup_speed.getFxImage()));
+                        stillObjects.add(new Brick(x, y, Sprite.brick.getFxImage()));
                     }
                 }
             }
@@ -146,7 +154,7 @@ public class BombermanGame extends Application {
 
     public void handleCollisions() {
         List<Bomb> bombs = myBomber.getBombs();
-        Rectangle r1 = myBomber.getBounds();
+        Rectangle r1 = myBomber.getDesBounds();
         //Bomber vs Bombs
         for (Bomb bomb : bombs) {
             Rectangle r2 = bomb.getBounds();
@@ -155,12 +163,31 @@ public class BombermanGame extends Application {
                 break;
             }
         }
+        //Bomber vs Flames
+        for (Bomb bomb : bombs) {
+            List<Flame> flames = bomb.getFlames();
+            for (Flame flame : flames) {
+                Rectangle r2 = flame.getBounds();
+                if (flame instanceof BrickExploded) {
+                    if (r1.intersects(r2)) myBomber.stay();
+                } else {
+                    Rectangle r3 = myBomber.getBounds();
+                    if (r3.intersects(r2)) myBomber.die();
+                }
+            }
+        }
         //Bomber vs StillObjects
-        for (Entity stillObject : stillObjects) {
+        for (int i = 0; i < stillObjects.size(); i++) {
+            StillEntity stillObject = stillObjects.get(i);
             Rectangle r2 = stillObject.getBounds();
             if (r1.intersects(r2)) {
                 if (myBomber.getLayer() >= stillObject.getLayer()) {
                     myBomber.move();
+                    if (stillObject instanceof Item) {
+                        Item item = (Item) stillObject;
+                        item.powerUp(myBomber);
+                        stillObjects.remove(i--);
+                    }
                 } else {
                     myBomber.stay();
                 }
@@ -169,14 +196,14 @@ public class BombermanGame extends Application {
         }
         //Bomber vs Enemies
         for (Enemy enemy : enemies) {
-            Rectangle r2 = enemy.getBounds();
+            Rectangle r2 = enemy.getDesBounds();
             if (r1.intersects(r2)) {
                 myBomber.die();
             }
         }
         //Enemies vs Bombs
         for (Enemy enemy : enemies) {
-            Rectangle r2 = enemy.getBounds();
+            Rectangle r2 = enemy.getDesBounds();
             for (Bomb bomb : bombs) {
                 Rectangle r3 = bomb.getBounds();
                 if (!bomb.isAllowedToPassThrough(enemy) && r2.intersects(r3)) {
@@ -185,10 +212,26 @@ public class BombermanGame extends Application {
                 }
             }
         }
+        //Enemies vs Flames
+        for (Enemy enemy : enemies) {
+            Rectangle r2 = enemy.getDesBounds();
+            for (Bomb bomb : bombs) {
+                List<Flame> flames = bomb.getFlames();
+                for (Flame flame : flames) {
+                    Rectangle r3 = flame.getBounds();
+                    if (flame instanceof BrickExploded) {
+                        if (r2.intersects(r3)) enemy.stay();
+                    } else {
+                        Rectangle r4 = enemy.getBounds();
+                        if (r3.intersects(r4)) enemy.die();
+                    }
+                }
+            }
+        }
         //Enemies vs StillObjects
         for (Enemy enemy : enemies) {
-            Rectangle r2 = enemy.getBounds();
-            for (Entity stillObject : stillObjects) {
+            Rectangle r2 = enemy.getDesBounds();
+            for (StillEntity stillObject : stillObjects) {
                 Rectangle r3 = stillObject.getBounds();
                 if (r2.intersects(r3)) {
                     if (enemy.getLayer() >= stillObject.getLayer()) {
@@ -197,6 +240,20 @@ public class BombermanGame extends Application {
                         enemy.stay();
                     }
                     break;
+                }
+            }
+        }
+        //Bombs vs Flames
+        for (int i = 0; i < bombs.size() - 1; i++) {
+            List<Flame> flames = bombs.get(i).getFlames();
+            for (int j = i + 1; j < bombs.size(); j++) {
+                Bomb bomb = bombs.get(j);
+                Rectangle r2 = bomb.getBounds();
+                for (Flame flame : flames) {
+                    Rectangle r3 = flame.getBounds();
+                    if (r2.intersects(r3)) {
+                        bomb.getExplodedBy(bombs.get(i));
+                    }
                 }
             }
         }

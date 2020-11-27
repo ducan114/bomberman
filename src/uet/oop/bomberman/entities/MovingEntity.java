@@ -20,6 +20,10 @@ public abstract class MovingEntity extends Entity {
         alive = true;
     }
 
+    public int getSpeed() {
+        return speed;
+    }
+
     public void setSpeed(int speed) {
         this.speed = speed;
     }
@@ -49,7 +53,7 @@ public abstract class MovingEntity extends Entity {
         desY = y;
     }
 
-    public Rectangle getBounds() {
+    public Rectangle getDesBounds() {
         return new Rectangle(desX, desY, Sprite.SCALED_SIZE, Sprite.SCALED_SIZE);
     }
 

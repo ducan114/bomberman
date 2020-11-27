@@ -8,6 +8,11 @@ public class SpeedItem extends Item {
     }
 
     @Override
+    public void powerUp(Bomber bomber) {
+        bomber.setSpeed(bomber.getSpeed() + 1);
+    }
+
+    @Override
     public void update() {
 
     }
